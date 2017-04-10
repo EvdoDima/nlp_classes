@@ -1,13 +1,49 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+
 from nltk.model import NgramModel
 import nltk
 import os, dill, pickle
+import argparse
+from nltk.corpus import brown
+from nltk.probability import LaplaceProbDist, SimpleGoodTuringProbDist
 
-text = ""
-with open (os.getcwd() + "/input/1.txt", "r") as file:
-	text = file.read()
+parser = argparse.ArgumentParser()
+parser.add_argument("--src-texts", required=True) #corpus path
+parser.add_argument("--text-encoding") #
+parser.add_argument("--word-type", choices=["surface_all", "surface_no_pm", "stem","suffix_X"])
+parser.add_argument("-n", type=int) #n-grams
 
-# print(text)
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--laplace", action="store_true")
+group.add_argument("--good-turing", action="store_true")
 
-lm = NgramModel(3, nltk.word_tokenize(text))
+parser.add_argument("--unknown-word-freq", type=int)
+parser.add_argument("-o", required=True)
+parsed = parser.parse_args()
 
-pickle.dump(lm, open("out.txt", "wb"))
+estimator = None
+if parsed.laplace:
+	estimator = lambda fdist, bins: LaplaceProbDist(fdist)
+elif parsed.good_turing:
+	estimator = lambda fdist, bins: SimpleGoodTuringProbDist(fdist, bins=1e5)
+
+words = []
+directory = parsed.src_texts
+n = parsed.n
+output = parsed.o
+
+for filename in os.listdir(directory):
+	with open (directory+"/"+filename, "r") as file:
+		if filename != ".DS_Store":
+			# print(filename)
+			words += nltk.word_tokenize(file.read())
+
+# print words
+
+lm = NgramModel(n, words, estimator=estimator)
+# pickle.dump(lm, open(output, "wb"))
+
+print lm.prob("Тора", ["И ПТИЦЫ ДА РАЗМНОЖАЮТСЯ НА ЗЕМЛЕ"])
+
+print lm.prob("ЗЕМЛЕ", ["И ПТИЦЫ ДА РАЗМНОЖАЮТСЯ НА"])
