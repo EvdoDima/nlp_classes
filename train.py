@@ -1,6 +1,6 @@
 from nltk.model import NgramModel
 import nltk
-import os, pickle
+import os, dill, pickle
 
 text = ""
 with open (os.getcwd() + "/input/1.txt", "r") as file:
@@ -9,4 +9,4 @@ with open (os.getcwd() + "/input/1.txt", "r") as file:
 # print(text)
 
 lm = NgramModel(3, nltk.word_tokenize(text))
-pickle.dump(lm, open("out.txt", "wb"),protocol=pickle.HIGHEST_PROTOCOL)
+pickle.dump(lm, open("out.txt", "wb"))
