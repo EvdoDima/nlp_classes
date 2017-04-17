@@ -3,15 +3,18 @@
 
 from nltk.model import NgramModel
 import nltk
-import os, dill, pickle
+import string
+import os, dill
+import Stemmer
 import argparse
+from nltk.probability import FreqDist
 from nltk.corpus import brown
 from nltk.probability import LaplaceProbDist, SimpleGoodTuringProbDist
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--src-texts", required=True) #corpus path
 parser.add_argument("--text-encoding") #
-parser.add_argument("--word-type", choices=["surface_all", "surface_no_pm", "stem","suffix_X"])
+parser.add_argument("--word-type")
 parser.add_argument("-n", type=int) #n-grams
 
 group = parser.add_mutually_exclusive_group()
@@ -35,15 +38,38 @@ output = parsed.o
 
 for filename in os.listdir(directory):
 	with open (directory+"/"+filename, "r") as file:
-		if filename != ".DS_Store":
-			# print(filename)
-			words += nltk.word_tokenize(file.read())
+		inp = file.read()
+		if parsed.text_encoding:
+			inp = inp.decode(parsed.text_encoding)
 
-# print words
+		if filename != ".DS_Store":
+			if parsed.word_type == "stem":
+				stemmer = Stemmer.Stemmer('russian')
+				words += stemmer.stemWords([inp])
+			elif parsed.word_type == "surface_all":
+				words += nltk.word_tokenize(inp)
+			elif parsed.word_type == "surface_no_pm" or parsed.word_type[:7] == "suffix_":
+				inp = inp.translate(None, string.punctuation)
+				words += nltk.word_tokenize(inp)
+			else:
+				words += nltk.word_tokenize(inp)
+			
+
+if parsed.word_type[:7] == "suffix_":
+	l = int(parsed.word_type.split("_")[1])
+	words = [x[-l:] for x in words]
+
+if parsed.unknown_word_freq:
+	unknown_words = []
+	# print "Removing unknown words"
+	fq = FreqDist(words)
+	for w, count in fq.iteritems():
+		if count < parsed.unknown_word_freq:
+			unknown_words += w
+
+	words[:] = [x if x not in unknown_words else "<UNK>" for x in words]
 
 lm = NgramModel(n, words, estimator=estimator)
-# pickle.dump(lm, open(output, "wb"))
-
-print lm.prob("Тора", ["И ПТИЦЫ ДА РАЗМНОЖАЮТСЯ НА ЗЕМЛЕ"])
-
-print lm.prob("ЗЕМЛЕ", ["И ПТИЦЫ ДА РАЗМНОЖАЮТСЯ НА"])
+outf = open(output, "wb")
+dill.dump(lm, outf ,protocol= 2)
+outf.close()

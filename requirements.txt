@@ -1,0 +1,5 @@
+https://github.com/nltk/nltk/archive/model.zip#egg=nltk
+scipy
+sklearn
+six
+pystemmer
